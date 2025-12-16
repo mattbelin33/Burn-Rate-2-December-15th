@@ -19,6 +19,11 @@ const MeetingCostTracker = () => {
     CEO: 1
   });
 
+  const [receiptOutcome, setReceiptOutcome] = useState(null);
+  const [spendApproved, setSpendApproved] = useState(null);
+  const [showReceipt, setShowReceipt] = useState(false);
+  const receiptRef = useRef(null);
+
   const roleRates = {
     JR: 50,
     SR: 100,
@@ -108,6 +113,23 @@ const MeetingCostTracker = () => {
     setIsRunning(false);
   };
 
+  const stopMeeting = () => {
+    setIsRunning(false);
+    setShowReceipt(true);
+    setReceiptOutcome(null);
+    setSpendApproved(null);
+  };
+
+  const downloadReceipt = async () => {
+    if (receiptRef.current) {
+      const canvas = await import('html2canvas').then(m => m.default(receiptRef.current));
+      const link = document.createElement('a');
+      link.download = `burn-rate-receipt-${Date.now()}.png`;
+      link.href = canvas.toDataURL();
+      link.click();
+    }
+  };
+
   const saveMeeting = () => {
     const meeting = {
       id: Date.now(),
@@ -176,7 +198,7 @@ Insights:
   const formatTime = (seconds) => {
     const h = Math.floor(seconds / 3600);
     const m = Math.floor((seconds % 3600) / 60);
-    const s = seconds % 60;
+    const s = Math.floor(seconds % 60);
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
@@ -223,7 +245,7 @@ Insights:
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className={`text-3xl md:text-4xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-              Meeting Cost Tracker V5
+              Meeting Cost Tracker V6
             </h1>
             <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'} mt-1`}>
               Because time is money, and meetings are expensive
@@ -391,10 +413,10 @@ Insights:
               </button>
             ) : (
               <button
-                onClick={pauseMeeting}
-                className="px-8 py-4 bg-gradient-to-r from-yellow-600 to-orange-600 text-white rounded-xl font-bold text-lg hover:scale-105 transition-transform shadow-lg"
+                onClick={stopMeeting}
+                className="px-8 py-4 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-xl font-bold text-lg hover:scale-105 transition-transform shadow-lg"
               >
-                PAUSE
+                STOP & GENERATE RECEIPT
               </button>
             )}
 
@@ -433,6 +455,106 @@ Insights:
             </button>
           </div>
         </div>
+
+        {/* Receipt Modal */}
+        {showReceipt && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+            <div
+              ref={receiptRef}
+              className={`bg-white text-gray-900 p-8 rounded-lg max-w-md w-full shadow-2xl ${receiptOutcome === 'no' ? 'border-4 border-red-600 animate-shake' : ''}`}
+              style={{ fontFamily: 'Courier New, monospace' }}
+            >
+              <div className="text-center border-b-2 border-dashed border-gray-300 pb-4 mb-4">
+                <h2 className="text-2xl font-bold uppercase tracking-widest">Meeting Receipt</h2>
+                <div className="text-sm opacity-60">{new Date().toLocaleString()}</div>
+              </div>
+
+              <div className="space-y-2 mb-6 text-sm">
+                <div className="flex justify-between">
+                  <span>Duration:</span>
+                  <span>{formatTime(elapsedSeconds)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Attendees:</span>
+                  <span>{Object.values(roles).reduce((a, b) => a + b, 0)}</span>
+                </div>
+                <div className="flex justify-between font-bold text-xl mt-4 pt-4 border-t-2 border-gray-900">
+                  <span>TOTAL COST:</span>
+                  <span className={spendApproved === 'no' ? 'underline decoration-red-500 decoration-4' : ''}>
+                    ${cost.toFixed(2)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Outcome Check */}
+              <div className="mb-6 p-4 bg-gray-50 rounded border border-gray-200">
+                <div className="text-center font-bold mb-3">Did this meeting produce a clear outcome?</div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setReceiptOutcome('yes')}
+                    className={`flex-1 py-2 px-4 rounded font-bold transition-colors ${receiptOutcome === 'yes' ? 'bg-green-600 text-white' : 'bg-gray-200 hover:bg-gray-300'}`}
+                  >
+                    Yes
+                  </button>
+                  <button
+                    onClick={() => setReceiptOutcome('no')}
+                    className={`flex-1 py-2 px-4 rounded font-bold transition-colors ${receiptOutcome === 'no' ? 'bg-red-600 text-white' : 'bg-gray-200 hover:bg-gray-300'}`}
+                  >
+                    No
+                  </button>
+                </div>
+              </div>
+
+              {/* Judgment Footer */}
+              <div className="mb-6 text-center text-sm">
+                <div className={`mb-2 ${spendApproved === 'no' ? 'font-bold text-red-600' : ''}`}>
+                  Would you approve this spend again?
+                </div>
+                <div className="flex justify-center gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="approve"
+                      checked={spendApproved === 'yes'}
+                      onChange={() => setSpendApproved('yes')}
+                    /> Yes
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="approve"
+                      checked={spendApproved === 'no'}
+                      onChange={() => setSpendApproved('no')}
+                    /> No
+                  </label>
+                </div>
+              </div>
+
+              {/* Footer Text */}
+              <div className="text-center text-xs opacity-50 border-t border-gray-200 pt-4">
+                {receiptOutcome === 'no' ? 'Outcome Delivered: NONE' : receiptOutcome === 'yes' ? 'Outcome Delivered: Decision Achieved' : 'Outcome Pending...'}
+                <br />
+                Generated by Burn Rate App
+              </div>
+
+              {/* Actions (Hidden in Screenshot) */}
+              <div className="mt-6 flex gap-2" data-html2canvas-ignore>
+                <button
+                  onClick={downloadReceipt}
+                  className="flex-1 bg-blue-600 text-white py-3 rounded font-bold hover:bg-blue-700"
+                >
+                  Download Receipt
+                </button>
+                <button
+                  onClick={() => setShowReceipt(false)}
+                  className="flex-1 bg-gray-200 text-gray-800 py-3 rounded font-bold hover:bg-gray-300"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Meeting History */}
         {showHistory && meetingHistory.length > 0 && (
