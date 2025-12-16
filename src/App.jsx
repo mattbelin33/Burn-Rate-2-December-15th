@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { DollarSign, Users, Clock, TrendingUp, Download, Share2, Moon, Sun, BarChart3, PieChart, History, Zap, Coffee } from 'lucide-react';
+import { DollarSign, Users, Clock, TrendingUp, Download, Share2, Moon, Sun, BarChart3, PieChart, History, Zap, Coffee, AlertTriangle, Target } from 'lucide-react';
 
 const MeetingCostTracker = () => {
   const [attendees, setAttendees] = useState(4);
@@ -7,6 +7,7 @@ const MeetingCostTracker = () => {
   const [isRunning, setIsRunning] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [meetingName, setMeetingName] = useState('');
+  const [meetingOutcome, setMeetingOutcome] = useState('');
   const [darkMode, setDarkMode] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(false);
@@ -39,8 +40,8 @@ const MeetingCostTracker = () => {
     let interval;
     if (isRunning) {
       interval = setInterval(() => {
-        setElapsedSeconds(prev => prev + 1);
-      }, 1000);
+        setElapsedSeconds(prev => prev + 0.1);
+      }, 100);
     }
     return () => clearInterval(interval);
   }, [isRunning]);
@@ -111,6 +112,7 @@ const MeetingCostTracker = () => {
     const meeting = {
       id: Date.now(),
       name: meetingName || 'Unnamed Meeting',
+      outcome: meetingOutcome || 'No outcome defined',
       date: new Date().toISOString(),
       duration: elapsedSeconds,
       cost: calculateCost(),
@@ -132,6 +134,7 @@ const MeetingCostTracker = () => {
     }
     setElapsedSeconds(0);
     setMeetingName('');
+    setMeetingOutcome('');
     lastMilestone.current = 0;
   };
 
@@ -142,6 +145,7 @@ const MeetingCostTracker = () => {
 Meeting Cost Summary
 ===================
 Meeting: ${meetingName || 'Unnamed'}
+Outcome: ${meetingOutcome || 'No outcome defined'}
 Date: ${new Date().toLocaleString()}
 Duration: ${formatTime(elapsedSeconds)}
 Total Cost: $${cost.toFixed(2)}
@@ -165,7 +169,7 @@ Insights:
 
   const shareToLinkedIn = () => {
     const cost = calculateCost();
-    const text = `Just tracked a ${formatTime(elapsedSeconds)} meeting that cost $${cost.toFixed(2)}. Time is money! 💰⏰`;
+    const text = `I just spent $${cost.toFixed(2)} on a meeting. The outcome? "${meetingOutcome || 'Undefined'}". Was it worth it? #BurnRate #MeetingCost`;
     window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(window.location.href)}&summary=${encodeURIComponent(text)}`, '_blank');
   };
 
@@ -180,8 +184,9 @@ Insights:
     const cost = calculateCost();
     if (cost < 50) return { icon: Coffee, text: `${Math.floor(cost / 5)} Starbucks coffees`, color: 'text-amber-600' };
     if (cost < 200) return { icon: Coffee, text: `${Math.floor(cost / 15)} lunch meals`, color: 'text-orange-600' };
-    if (cost < 1000) return { icon: Zap, text: `${Math.floor(cost / 10)} hours of Azure compute`, color: 'text-blue-600' };
-    return { icon: TrendingUp, text: 'Approaching monthly salary territory!', color: 'text-red-600' };
+    if (cost < 1000) return { icon: Zap, text: `${Math.floor(cost / 120)} hours of Senior Dev time`, color: 'text-blue-600' };
+    if (cost < 5000) return { icon: TrendingUp, text: `${Math.floor(cost / 1000)} MacBook Airs`, color: 'text-purple-600' };
+    return { icon: AlertTriangle, text: 'A Junior Developer\'s Salary', color: 'text-red-600' };
   };
 
   const getMilestoneMessage = () => {
@@ -218,7 +223,7 @@ Insights:
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className={`text-3xl md:text-4xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-              Meeting Cost Tracker V4
+              Meeting Cost Tracker V5
             </h1>
             <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'} mt-1`}>
               Because time is money, and meetings are expensive
@@ -255,8 +260,10 @@ Insights:
           <div className="relative">
             <div className={`text-7xl md:text-9xl font-bold ${isRunning ? 'animate-pulse' : ''}`}
               style={{
-                color: cost > 1000 ? '#dc2626' : cost > 500 ? '#ea580c' : '#7c2d12',
-                transition: 'color 0.5s ease'
+                color: cost > 1000 ? '#7f1d1d' : cost > 500 ? '#991b1b' : cost > 100 ? '#b91c1c' : '#ef4444',
+                transition: 'color 1s ease, text-shadow 0.5s ease',
+                textShadow: cost > 500 ? '0 0 20px rgba(220, 38, 38, 0.5)' : 'none',
+                fontVariantNumeric: 'tabular-nums'
               }}>
               ${cost.toFixed(2)}
             </div>
@@ -270,23 +277,31 @@ Insights:
               <Clock size={16} />
               <span className="font-mono text-xl">{formatTime(elapsedSeconds)}</span>
             </div>
-            <div className={`flex items-center gap-2 ${comparison.color}`}>
+            <div className={`flex items-center gap-2 ${comparison.color} font-semibold`}>
               <ComparisonIcon size={16} />
               <span>{comparison.text}</span>
             </div>
           </div>
         </div>
 
-        {/* Meeting Name */}
-        <div className={`${cardClass} rounded-xl shadow-lg p-4 mb-6`}>
+        {/* Outcome Framing */}
+        <div className={`${cardClass} rounded-xl shadow-lg p-6 mb-6 border-l-4 ${meetingOutcome ? 'border-green-500' : 'border-red-500'}`}>
+          <h3 className="font-bold text-lg mb-2 flex items-center gap-2">
+            <Target size={20} />
+            What did this meeting actually produce?
+          </h3>
           <input
             type="text"
-            value={meetingName}
-            onChange={(e) => setMeetingName(e.target.value)}
-            placeholder="Meeting name (e.g., Q4 Planning Review)"
+            value={meetingOutcome}
+            onChange={(e) => setMeetingOutcome(e.target.value)}
+            placeholder="e.g., 'Finalized Q4 Roadmap' or 'Nothing...'"
             className={`w-full px-4 py-2 rounded-lg border ${inputClass} focus:outline-none focus:ring-2 focus:ring-rose-500`}
-            disabled={isRunning}
           />
+          {!meetingOutcome && elapsedSeconds > 60 && (
+            <div className="text-red-500 text-sm mt-2 animate-pulse">
+              ⚠️ You are spending money without a defined outcome.
+            </div>
+          )}
         </div>
 
         <div className="grid md:grid-cols-2 gap-6 mb-6">
@@ -434,6 +449,9 @@ Insights:
                       <div className="font-bold">{meeting.name}</div>
                       <div className="text-sm opacity-60">
                         {new Date(meeting.date).toLocaleString()} • {formatTime(meeting.duration)}
+                      </div>
+                      <div className="text-xs mt-1 italic text-gray-500">
+                        Outcome: {meeting.outcome}
                       </div>
                     </div>
                     <div className="text-right">
